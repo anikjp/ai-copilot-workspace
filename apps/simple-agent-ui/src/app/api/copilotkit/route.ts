@@ -11,6 +11,9 @@ import { NextRequest } from "next/server";
 // Import HttpAgent for communicating with external AI agents
 import { HttpAgent } from "@ag-ui/client";
 
+// Import Clerk for authentication
+import { auth } from '@clerk/nextjs/server';
+
 // STEP 1: Initialize HTTP Agent for Agno/Stock Analysis Backend
 // Create agent connection to our FastAPI Agno/Stock Analysis service
 
@@ -66,8 +69,12 @@ import { tap } from 'rxjs/operators';
 
 const agnoAgent = new LoggingHttpAgent({
   // Use environment variable for backend URL, fallback to localhost
-  url: process.env.NEXT_PUBLIC_AGNO_URL || "http://0.0.0.0:8000/stock-agent",
+  url: process.env.NEXT_PUBLIC_AGNO_URL || "http://localhost:8000/agents/stock-reference",
   debug: true,  // Enable debug mode
+  headers: {
+    "Content-Type": "application/json",
+    // No hardcoded token - will use Clerk token in POST handler
+  },
 });
 
 // STEP 2: Configure OpenAI Service Adapter
@@ -96,6 +103,39 @@ export const POST = async (req: NextRequest) => {
   console.log("🔵 CLIENT API: URL:", req.url);
   console.log("🔵 CLIENT API: Method:", req.method);
   
+  // STEP 4.1: Clerk Authentication
+  // Get the authenticated user from Clerk
+  const { getToken, userId } = await auth();
+  
+  if (!userId) {
+    console.log("🔵 CLIENT API: No authenticated user found");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized - Please sign in to access this feature" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("🔵 CLIENT API: Authenticated user ID:", userId);
+  
+  // Get the JWT token from Clerk
+  const clerkToken = await getToken({ template: "backend-auth-local" });
+  if (!clerkToken) {
+    console.log("🔵 CLIENT API: Failed to get Clerk token");
+    return new Response(
+      JSON.stringify({ error: "Authentication failed - Unable to get token" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("🔵 CLIENT API: Clerk token obtained successfully");
+  console.log("🔵 CLIENT API: Using Clerk token (first 50 chars):", clerkToken.substring(0, 50) + "...");
+  
   try {
     const body = await req.clone().json();
     console.log("🔵 CLIENT API: Request messages count:", body.messages?.length);
@@ -104,10 +144,25 @@ export const POST = async (req: NextRequest) => {
     console.log("🔵 CLIENT API: Could not parse request body", e);
   }
   
+  // STEP 4.2: Create Runtime with Clerk Token
+  // Create a new runtime with the Clerk token for this request
+  const runtimeWithAuth = new CopilotRuntime({
+    agents: {
+      agnoAgent: new LoggingHttpAgent({
+        url: process.env.NEXT_PUBLIC_AGNO_URL || "http://localhost:8000/agents/stock-reference",
+        debug: true,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${clerkToken}`,
+        },
+      }),
+    },
+  });
+  
   // STEP 5: Create Request Handler with CopilotKit Integration
   // Configure the endpoint handler with our runtime and service adapter
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime, // Our configured CopilotKit runtime with agents
+    runtime: runtimeWithAuth, // Our configured CopilotKit runtime with Clerk authentication
     serviceAdapter, // OpenAI adapter for LLM communication
     endpoint: "/api/copilotkit", // This API route's endpoint path
   });

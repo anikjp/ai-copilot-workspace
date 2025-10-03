@@ -11,6 +11,9 @@ import { NextRequest } from "next/server";
 import { HttpAgent } from "@ag-ui/client";
 import { tap } from "rxjs/operators";
 
+// Import Clerk for authentication
+import { auth } from '@clerk/nextjs/server';
+
 // STEP 1: Initialize HTTP Agent for BPP Backend
 // Create a custom HttpAgent with logging
 class LoggingHttpAgent extends HttpAgent {
@@ -77,10 +80,61 @@ export const POST = async (req: NextRequest) => {
   console.log("🔵 BPP CLIENT API: CopilotKit request received for BPP Agent");
   console.log("🔵 BPP CLIENT API: URL:", req.url);
   console.log("🔵 BPP CLIENT API: Method:", req.method);
+  
+  // STEP 3.1: Clerk Authentication
+  // Get the authenticated user from Clerk
+  const { getToken, userId } = await auth();
+  
+  if (!userId) {
+    console.log("🔵 BPP CLIENT API: No authenticated user found");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized - Please sign in to access this feature" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("🔵 BPP CLIENT API: Authenticated user ID:", userId);
+  
+  // Get the JWT token from Clerk
+  const clerkToken = await getToken();
+  if (!clerkToken) {
+    console.log("🔵 BPP CLIENT API: Failed to get Clerk token");
+    return new Response(
+      JSON.stringify({ error: "Authentication failed - Unable to get token" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("🔵 BPP CLIENT API: Clerk token obtained successfully");
   console.log("=====================================");
 
+  // STEP 3.2: Create Runtime with Clerk Token
+  // Create a new runtime with the Clerk token for this request
+  const runtimeWithAuth = new CopilotRuntime({
+    agents: [
+      {
+        name: "bpp-agent",
+        description: "Business Process Planning AI Assistant",
+        agent: new LoggingHttpAgent({
+          url: process.env.NEXT_PUBLIC_BPP_URL || "http://0.0.0.0:8000/bpp-agent",
+          debug: true,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${clerkToken}`,
+          },
+        }),
+      },
+    ],
+  });
+
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
+    runtime: runtimeWithAuth, // Our configured CopilotKit runtime with Clerk authentication
     endpoint: "/api/copilotkit/bpp",
   });
 

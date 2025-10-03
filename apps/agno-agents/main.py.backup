@@ -355,6 +355,241 @@ async def get_all_rate_limits():
         }
 
 # ============================================================================
+# OAUTH 2.0 AUTHENTICATION ENDPOINTS - REMOVED (Using Clerk Only)
+# ============================================================================
+
+# REMOVED: OAuth endpoints - using Clerk authentication only
+# @app.post("/oauth/authorize")
+# async def authorize(
+    response_type: str,
+    client_id: str,
+    redirect_uri: str,
+    scope: str = "read",
+    state: str = None
+):
+    """
+    OAuth 2.0 Authorization Endpoint
+    
+    Handles the authorization code flow for OAuth 2.0.
+    In a real implementation, this would redirect to a login page.
+    """
+    try:
+        # Validate client
+        client = oauth_provider.validate_client(client_id)
+        if not client:
+            raise HTTPException(status_code=400, detail="Invalid client_id")
+        
+        # Validate redirect URI
+        if redirect_uri not in client.redirect_uris:
+            raise HTTPException(status_code=400, detail="Invalid redirect_uri")
+        
+        # For demo purposes, we'll return a mock authorization code
+        # In a real implementation, this would redirect to a login page
+        if response_type == "code":
+            # Mock user authentication - in real app, this would be handled by login form
+            user_id = "admin"  # This would come from the login form
+            
+            auth_code = oauth_provider.generate_authorization_code(
+                client_id=client_id,
+                user_id=user_id,
+                redirect_uri=redirect_uri,
+                scope=scope
+            )
+            
+            return {
+                "authorization_code": auth_code,
+                "state": state,
+                "redirect_uri": redirect_uri
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported response_type")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Authorization failed: {e}")
+        raise HTTPException(status_code=500, detail="Authorization failed")
+
+# @app.post("/oauth/token")
+# async def token(
+    grant_type: str = Form(...),
+    client_id: str = Form(...),
+    client_secret: str = Form(None),
+    code: str = Form(None),
+    redirect_uri: str = Form(None),
+    refresh_token: str = Form(None),
+    username: str = Form(None),
+    password: str = Form(None),
+    scope: str = Form("read"),
+    org_id: str = Form(None),
+    org_name: str = Form(None),
+    org_role: str = Form(None)
+):
+    """
+    OAuth 2.0 Token Endpoint
+    
+    Issues access and refresh tokens based on the grant type.
+    """
+    try:
+        # Validate client
+        client = oauth_provider.validate_client(client_id, client_secret)
+        if not client:
+            raise HTTPException(status_code=401, detail="Invalid client credentials")
+        
+        if grant_type == GrantType.AUTHORIZATION_CODE.value:
+            # Authorization Code Grant
+            if not code or not redirect_uri:
+                raise HTTPException(status_code=400, detail="Missing code or redirect_uri")
+            
+            auth_data = oauth_provider.exchange_authorization_code(code, client_id, redirect_uri)
+            if not auth_data:
+                raise HTTPException(status_code=400, detail="Invalid authorization code")
+            
+            tokens = oauth_provider.generate_tokens(
+                user_id=auth_data["user_id"],
+                client_id=client_id,
+                scope=auth_data["scope"]
+            )
+            
+        elif grant_type == GrantType.CLIENT_CREDENTIALS.value:
+            # Client Credentials Grant
+            tokens = oauth_provider.generate_tokens(
+                user_id=client_id,  # Use client_id as user_id for client_credentials
+                client_id=client_id,
+                scope=scope,
+                org_id=org_id,
+                org_name=org_name,
+                org_role=org_role
+            )
+            
+        elif grant_type == GrantType.REFRESH_TOKEN.value:
+            # Refresh Token Grant
+            if not refresh_token:
+                raise HTTPException(status_code=400, detail="Missing refresh_token")
+            
+            tokens = oauth_provider.refresh_token(refresh_token)
+            if not tokens:
+                raise HTTPException(status_code=400, detail="Invalid refresh token")
+                
+        elif grant_type == GrantType.PASSWORD.value:
+            # Password Grant (Resource Owner Password Credentials)
+            if not username or not password:
+                raise HTTPException(status_code=400, detail="Missing username or password")
+            
+            user = oauth_provider.authenticate_user(username, password)
+            if not user:
+                raise HTTPException(status_code=401, detail="Invalid credentials")
+            
+            tokens = oauth_provider.generate_tokens(
+                user_id=user.user_id,
+                client_id=client_id,
+                scope=scope
+            )
+            
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported grant_type")
+        
+        return {
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "token_type": tokens.token_type,
+            "expires_in": tokens.expires_in,
+            "scope": tokens.scope
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Token generation failed")
+
+# @app.post("/oauth/revoke")
+# async def revoke_token(token: str = Form(...)):
+    """
+    OAuth 2.0 Token Revocation Endpoint
+    
+    Revokes an access or refresh token.
+    """
+    try:
+        success = oauth_provider.revoke_token(token)
+        if success:
+            return {"message": "Token revoked successfully"}
+        else:
+            return {"message": "Token not found or already revoked"}
+            
+    except Exception as e:
+        logger.error(f"Token revocation failed: {e}")
+        raise HTTPException(status_code=500, detail="Token revocation failed")
+
+# @app.get("/oauth/userinfo")
+# async def userinfo(authorization: str = None):
+    """
+    OAuth 2.0 UserInfo Endpoint
+    
+    Returns information about the authenticated user.
+    """
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+        
+        token = authorization.split(" ")[1]
+        payload = oauth_provider.validate_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+        
+        user = oauth_provider.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "sub": user.user_id,
+            "username": user.username,
+            "email": user.email,
+            "roles": [role.value for role in user.roles],
+            "is_active": user.is_active,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"UserInfo retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail="UserInfo retrieval failed")
+
+# @app.get("/oauth/clients")
+# async def list_clients():
+    """
+    List OAuth 2.0 clients (for admin purposes)
+    """
+    try:
+        clients = []
+        for client_id, client in oauth_provider.clients.items():
+            clients.append({
+                "client_id": client_id,
+                "name": client.name,
+                "redirect_uris": client.redirect_uris,
+                "grant_types": [gt.value for gt in client.grant_types],
+                "scopes": client.scopes,
+                "is_confidential": client.is_confidential,
+                "is_active": client.is_active,
+                "created_at": client.created_at.isoformat() if client.created_at else None
+            })
+        
+        return {
+            "clients": clients,
+            "total": len(clients)
+        }
+        
+    except Exception as e:
+        logger.error(f"Client listing failed: {e}")
+        raise HTTPException(status_code=500, detail="Client listing failed")
+
+# ============================================================================
 # DISCOVERY ENDPOINTS (AG-UI Protocol Compliance)
 # ============================================================================
 

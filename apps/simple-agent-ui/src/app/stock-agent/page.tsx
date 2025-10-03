@@ -6,6 +6,7 @@ import { BarChartComponent } from "@/design-system/molecules/chart-components/ba
 import { LineChartComponent } from "@/design-system/molecules/chart-components/line-chart"
 import { GenerativeCanvas } from "@/design-system/organisms/generative-canvas"
 import { INVESTMENT_SUGGESTION_PROMPT } from "@/utils/prompts"
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { useCoAgent, useCoAgentStateRender, useCopilotAction, useCopilotReadable } from "@copilotkit/react-core"
 import { useCopilotChatSuggestions } from "@copilotkit/react-ui"
 import { useEffect, useState } from "react"
@@ -392,13 +393,63 @@ export default function StockAgentPage() {
 
 
   return (
-    <GenerativeCanvas title="Portfolio Dashboard">
-      <PortfolioStateDisplay
-        portfolioState={currentState}
-        sandBoxPortfolio={sandBoxPortfolio}
-        totalCash={totalCash}
-        investedAmount={investedAmount}
-      />
-    </GenerativeCanvas>
+    <>
+      {/* Clerk Authentication Header */}
+      <div className="flex justify-between items-center p-4 bg-white border-b">
+        <h1 className="text-2xl font-bold text-gray-800">AI Stock Portfolio</h1>
+        <div className="flex items-center gap-4">
+          <SignedOut>
+            <SignInButton mode="redirect" redirectUrl="/sign-in">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Welcome back!</span>
+              <UserButton 
+                afterSignOutUrl="/stock-agent"
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8"
+                  }
+                }}
+              />
+            </div>
+          </SignedIn>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <SignedIn>
+        <GenerativeCanvas title="Portfolio Dashboard">
+          <PortfolioStateDisplay
+            portfolioState={currentState}
+            sandBoxPortfolio={sandBoxPortfolio}
+            totalCash={totalCash}
+            investedAmount={investedAmount}
+          />
+        </GenerativeCanvas>
+      </SignedIn>
+
+      <SignedOut>
+        <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50">
+          <div className="text-center max-w-md">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Welcome to AI Stock Portfolio
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Sign in to access your personalized AI-powered investment dashboard and get intelligent portfolio recommendations.
+            </p>
+            <SignInButton mode="redirect" redirectUrl="/sign-in">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors shadow-lg">
+                Get Started
+              </button>
+            </SignInButton>
+          </div>
+        </div>
+      </SignedOut>
+    </>
   )
 }

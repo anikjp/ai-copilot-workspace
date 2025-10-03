@@ -11,6 +11,9 @@ import { NextRequest } from "next/server";
 // Import HttpAgent for communicating with external AI agents
 import { HttpAgent } from "@ag-ui/client";
 
+// Import Clerk for authentication
+import { auth } from '@clerk/nextjs/server';
+
 // STEP 1: Initialize HTTP Agent for Generic Agent Backend
 // Create agent connection to our FastAPI Generic Agent service
 const genericAgent = new HttpAgent({
@@ -40,10 +43,56 @@ export const POST = async (req: NextRequest) => {
   console.log("Generic Agent URL:", process.env.NEXT_PUBLIC_AGNO_URL || "http://0.0.0.0:8000/generic-agent");
   console.log("Runtime agents:", Object.keys(runtime.agents || {}));
   
+  // STEP 4.1: Clerk Authentication
+  // Get the authenticated user from Clerk
+  const { getToken, userId } = await auth();
+  
+  if (!userId) {
+    console.log("Generic Agent API: No authenticated user found");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized - Please sign in to access this feature" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("Generic Agent API: Authenticated user ID:", userId);
+  
+  // Get the JWT token from Clerk
+  const clerkToken = await getToken({ template: "backend-auth-local" });
+  if (!clerkToken) {
+    console.log("Generic Agent API: Failed to get Clerk token");
+    return new Response(
+      JSON.stringify({ error: "Authentication failed - Unable to get token" }),
+      { 
+        status: 401, 
+        headers: { "Content-Type": "application/json" } 
+      }
+    );
+  }
+  
+  console.log("Generic Agent API: Clerk token obtained successfully");
+  
+  // STEP 4.2: Create Runtime with Clerk Token
+  // Create a new runtime with the Clerk token for this request
+  const runtimeWithAuth = new CopilotRuntime({
+    agents: {
+      genericAgent: new HttpAgent({
+        url: process.env.NEXT_PUBLIC_AGNO_URL || "http://0.0.0.0:8000/generic-agent",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${clerkToken}`,
+        },
+      }),
+    },
+  });
+  
   // STEP 5: Create Request Handler with CopilotKit Integration
   // Configure the endpoint handler with our runtime and service adapter
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime, // Our configured CopilotKit runtime with agents
+    runtime: runtimeWithAuth, // Our configured CopilotKit runtime with Clerk authentication
     serviceAdapter, // OpenAI adapter for LLM communication
     endpoint: "/api/copilotkit/generic", // This API route's endpoint path
   });

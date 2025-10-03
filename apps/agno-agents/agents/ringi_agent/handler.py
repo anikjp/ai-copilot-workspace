@@ -7,7 +7,8 @@ Handles collaborative decision-making workflows.
 """
 
 from typing import Dict, Any
-from shared.agent_base import BaseAgentHandler, AgentRequestContext, AgentConfig, AgentType
+from shared.agent_base import BaseAgentHandler, AgentRequestContext, AgentConfig, AgentType, get_agent_route
+from shared.rate_limiter import RateLimitConfig
 from agno.workflow.v2 import Workflow
 
 
@@ -80,10 +81,72 @@ def create_ringi_agent_config(workflow: Workflow) -> AgentConfig:
         name="Ringi System Agent",
         description="Collaborative decision-making and approval workflow system",
         agent_type=AgentType.RINGI_SYSTEM,
-        route="/ringi-system",
+        route=get_agent_route("ringi-system"),
         workflow=workflow,
         requires_auth=True,
         timeout_seconds=600,  # Longer timeout for complex approval workflows
+        version="2.1.0",
+        capabilities=[
+            "approval-workflows",
+            "stakeholder-management",
+            "decision-tracking",
+            "collaborative-decision-making",
+            "workflow-automation",
+            "audit-trail"
+        ],
+        supported_events=[
+            "RUN_STARTED",
+            "TEXT_MESSAGE_START",
+            "TEXT_MESSAGE_CONTENT",
+            "TEXT_MESSAGE_END",
+            "TOOL_CALL_START",
+            "TOOL_CALL_END",
+            "STATE_DELTA",
+            "STATE_SNAPSHOT",
+            "RUN_FINISHED"
+        ],
+        tools=[
+            {
+                "name": "create_approval_request",
+                "description": "Create a new approval request",
+                "type": "function",
+                "parameters": {
+                    "request_type": {"type": "string", "description": "Type of approval request"},
+                    "amount": {"type": "number", "description": "Requested amount"},
+                    "department": {"type": "string", "description": "Requesting department"}
+                }
+            },
+            {
+                "name": "manage_stakeholders",
+                "description": "Manage approval stakeholders and roles",
+                "type": "function",
+                "parameters": {
+                    "action": {"type": "string", "description": "Stakeholder action"},
+                    "stakeholder": {"type": "object", "description": "Stakeholder information"}
+                }
+            },
+            {
+                "name": "track_approval_status",
+                "description": "Track and update approval status",
+                "type": "function",
+                "parameters": {
+                    "request_id": {"type": "string", "description": "Approval request ID"},
+                    "status": {"type": "string", "description": "New status"}
+                }
+            }
+        ],
+        models=[
+            {"name": "gpt-4o", "provider": "openai", "type": "chat", "purpose": "workflow_management"},
+            {"name": "claude-3-sonnet", "provider": "anthropic", "type": "chat", "purpose": "decision_analysis"}
+        ],
+        tags=["approval", "workflow", "collaboration", "decision-making", "enterprise"],
+        rate_limit_config=RateLimitConfig(
+            requests_per_minute=20,  # Lower limit for approval workflows
+            requests_per_hour=300,
+            requests_per_day=2000,
+            burst_limit=3,
+            enabled=True
+        ),
         default_state={
             "decision_type": "expense",
             "amount": 0,

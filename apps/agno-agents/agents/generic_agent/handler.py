@@ -7,7 +7,8 @@ Handles various types of requests with model selection and tool execution.
 """
 
 from typing import Dict, Any
-from shared.agent_base import BaseAgentHandler, AgentRequestContext, AgentConfig, AgentType
+from shared.agent_base import BaseAgentHandler, AgentRequestContext, AgentConfig, AgentType, get_agent_route
+from shared.rate_limiter import RateLimitConfig
 from agno.workflow.v2 import Workflow
 
 
@@ -75,10 +76,73 @@ def create_generic_agent_config(workflow: Workflow) -> AgentConfig:
         name="Generic Agent",
         description="Multi-purpose agent with model selection and tool execution capabilities",
         agent_type=AgentType.GENERIC_CHAT,
-        route="/generic-agent",
+        route=get_agent_route("generic-agent"),
         workflow=workflow,
         requires_auth=False,
         timeout_seconds=120,
+        version="2.1.0",
+        capabilities=[
+            "multi-model-support",
+            "file-processing",
+            "workspace-management",
+            "tool-execution",
+            "conversation-management",
+            "context-awareness"
+        ],
+        supported_events=[
+            "RUN_STARTED",
+            "TEXT_MESSAGE_START",
+            "TEXT_MESSAGE_CONTENT",
+            "TEXT_MESSAGE_END",
+            "TOOL_CALL_START",
+            "TOOL_CALL_END",
+            "STATE_DELTA",
+            "STATE_SNAPSHOT",
+            "RUN_FINISHED"
+        ],
+        tools=[
+            {
+                "name": "file_processor",
+                "description": "Process and analyze uploaded files",
+                "type": "function",
+                "parameters": {
+                    "file_path": {"type": "string", "description": "Path to file"},
+                    "operation": {"type": "string", "description": "Processing operation"}
+                }
+            },
+            {
+                "name": "model_selector",
+                "description": "Select and switch between different AI models",
+                "type": "function",
+                "parameters": {
+                    "model_name": {"type": "string", "description": "Model to use"},
+                    "parameters": {"type": "object", "description": "Model parameters"}
+                }
+            },
+            {
+                "name": "workspace_manager",
+                "description": "Manage workspace and context",
+                "type": "function",
+                "parameters": {
+                    "action": {"type": "string", "description": "Workspace action"},
+                    "data": {"type": "object", "description": "Workspace data"}
+                }
+            }
+        ],
+        models=[
+            {"name": "gpt-4o", "provider": "openai", "type": "chat", "purpose": "general"},
+            {"name": "gpt-4o-mini", "provider": "openai", "type": "chat", "purpose": "fast"},
+            {"name": "claude-3-sonnet", "provider": "anthropic", "type": "chat", "purpose": "analysis"},
+            {"name": "claude-3-haiku", "provider": "anthropic", "type": "chat", "purpose": "quick"}
+        ],
+        tags=["general", "multi-model", "flexible", "conversation", "tools"],
+        rate_limit_config=RateLimitConfig(
+            requests_per_minute=60,  # Standard limit
+            requests_per_hour=1000,
+            requests_per_day=10000,
+            burst_limit=10,
+            enabled=True
+        ),
         default_state={
             "selected_model": "gpt-4o-mini",
             "workflow_type": "chat",

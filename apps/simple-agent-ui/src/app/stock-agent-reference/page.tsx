@@ -6,6 +6,7 @@ import { BarChartComponent } from "@/design-system/molecules/chart-components/ba
 import { LineChartComponent } from "@/design-system/molecules/chart-components/line-chart"
 import { GenerativeCanvas } from "@/design-system/organisms/generative-canvas"
 import { INVESTMENT_SUGGESTION_PROMPT } from "@/utils/prompts"
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { useCoAgent, useCoAgentStateRender, useCopilotAction, useCopilotReadable } from "@copilotkit/react-core"
 import { useCopilotChatSuggestions } from "@copilotkit/react-ui"
 import { useEffect, useState } from "react"
@@ -402,13 +403,66 @@ export default function StockAgentReferencePage() {
   }
 
   return (
-    <GenerativeCanvas title="Stock Analysis Agent (Reference Implementation)">
-      <PortfolioStateDisplay
-        portfolioState={currentState}
-        sandBoxPortfolio={sandBoxPortfolio}
-        totalCash={totalCash}
-        investedAmount={investedAmount}
-      />
-    </GenerativeCanvas>
+    <>
+      {/* Clerk Authentication Header */}
+      <div className="flex justify-between items-center p-4 bg-white border-b">
+        <h1 className="text-2xl font-bold text-gray-800">Stock Analysis Agent (Reference)</h1>
+        <div className="flex items-center gap-4">
+          <SignedOut>
+            <SignInButton mode="redirect" redirectUrl="/sign-in">
+              <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Welcome back!</span>
+              <UserButton 
+                afterSignOutUrl="/stock-agent-reference"
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8"
+                  }
+                }}
+              />
+            </div>
+          </SignedIn>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <SignedIn>
+        <GenerativeCanvas title="Stock Analysis Agent (Reference Implementation)">
+          <PortfolioStateDisplay
+            portfolioState={currentState}
+            sandBoxPortfolio={sandBoxPortfolio}
+            totalCash={totalCash}
+            investedAmount={investedAmount}
+          />
+        </GenerativeCanvas>
+      </SignedIn>
+
+      <SignedOut>
+        <div className="flex flex-col items-center justify-center min-h-[400px] bg-gradient-to-br from-green-50 to-emerald-100">
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-2xl">📈</span>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Stock Analysis Agent
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Access advanced AI-powered stock analysis, portfolio optimization, and investment insights with our reference implementation.
+            </p>
+            <SignInButton mode="redirect" redirectUrl="/sign-in">
+              <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors shadow-lg">
+                Get Started
+              </button>
+            </SignInButton>
+          </div>
+        </div>
+      </SignedOut>
+    </>
   )
 }
