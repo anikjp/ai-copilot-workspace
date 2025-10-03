@@ -1,0 +1,19 @@
+# Node
+node_modules/
+dist/
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# MacOS
+.DS_Store
+

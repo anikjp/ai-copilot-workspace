@@ -1,0 +1,10 @@
+{
+  "workspace_id": "demo_workspace",
+  "agent_id": "demo_agent",
+  "scope": "user",
+  "scope_id": "demo_user",
+  "org_id": "demo_org",
+  "env": "demo",
+  "created_at": "2025-09-30T06:47:38.650579",
+  "version": "1.0"
+}

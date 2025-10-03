@@ -1,0 +1,28 @@
+# Core dependencies
+fastapi>=0.103.0
+uvicorn>=0.23.0
+python-dotenv>=1.0.0
+
+# AI models
+openai>=1.0.0
+groq>=0.4.0
+google-generativeai>=0.3.0
+
+# Agno framework
+agno>=0.1.0
+# ag-ui is a local package, not available on PyPI
+
+# Utilities
+pydantic>=2.0.0
+requests>=2.31.0
+# asyncio is part of the standard library
+uuid>=1.30
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# Development
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0

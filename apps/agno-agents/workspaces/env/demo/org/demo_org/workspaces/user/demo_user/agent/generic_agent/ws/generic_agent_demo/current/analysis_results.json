@@ -1,0 +1,23 @@
+{
+  "total_products": 6,
+  "categories": {
+    "Electronics": 4,
+    "Furniture": 2
+  },
+  "average_price_by_category": {
+    "Electronics": 352.49,
+    "Furniture": 324.99
+  },
+  "low_stock_items": [
+    {
+      "product": "Desk",
+      "category": "Furniture",
+      "current_stock": 15
+    },
+    {
+      "product": "Chair",
+      "category": "Furniture",
+      "current_stock": 22
+    }
+  ]
+}

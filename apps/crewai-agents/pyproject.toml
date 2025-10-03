@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "agent"
+version = "0.1.0"
+description = ""
+authors = ["Orca CopilotKit <testapp@copilotkit.ai>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+langchain = ">=0.1.0"
+langchain-core = ">=0.1.5"
+langchain-community = ">=0.0.1"
+langchain-experimental = ">=0.0.11"
+langchain-openai = ">=0.0.1"
+langgraph = "^0.3.25"
+dotenv = "^0.9.9"
+uvicorn = "^0.34.0"
+fastapi = "0.115.12"
+ag-ui-protocol = ">=0.1.5,<0.2.0"
+aiohttp = ">=3.12.11,<4.0.0"
+html2text = ">=2025.4.15,<2026.0.0"
+crewai = "^0.130.0"
+tavily-python = "^0.7.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+server = "main:main"

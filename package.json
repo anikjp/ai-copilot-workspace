@@ -1,0 +1,28 @@
+{
+  "name": "aj-copilot-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:workspaces": "pnpm -w --filter workspaces-site run dev",
+    "build:workspaces": "pnpm -w --filter workspaces-site run build",
+    "start:workspaces": "pnpm -w --filter workspaces-site run start",
+    "dev:agui": "pnpm -w --filter @apps/mastra-dev run dev",
+    "dev:simple-agent": "pnpm -w --filter simple-agent-ui run dev",
+    "build:simple-agent": "pnpm -w --filter simple-agent-ui run build",
+    "start:simple-agent": "pnpm -w --filter simple-agent-ui run start",
+    "dev:agno": "cd apps/agno-agents && poetry config virtualenvs.in-project true && poetry install --no-interaction --no-root && poetry run python main.py",
+    "dev:crewai": "cd apps/crewai-agents && poetry config virtualenvs.in-project true && poetry install --no-interaction --no-root && poetry run python main.py",
+    "dev:ai-chat-api": "cd apps/ai-chat-api && (python -m venv venv || true) && source venv/bin/activate && pip install -r requirements.txt && python start.py",
+    "dev:all": "run-p dev:agui dev:workspaces dev:simple-agent"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.1",
+    "npm-run-all": "^4.1.5"
+  },
+  "packageManager": "pnpm@10.15.1"
+}
