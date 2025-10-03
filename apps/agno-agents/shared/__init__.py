@@ -1,6 +1,6 @@
 """Shared utilities for all agents"""
 from .model_factory import ModelFactory, ModelManager
-from .base_agent import create_agent_endpoint
+# base_agent.py has been removed - using agent_base.py instead
 from .workspace_manager import WorkspaceManager, RunContext, WorkspaceScope
 from .storage_config import (
     StorageConfig, 
