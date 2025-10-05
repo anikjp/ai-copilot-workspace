@@ -1,15 +1,19 @@
-# Agno Agents Backend
+# Agno Agents
 
-A FastAPI-based backend server for AI agents with real-time streaming capabilities.
+Pure AI Agent implementations for AJ Copilot multi-frontend architecture.
+
+**Note**: This service now focuses exclusively on AI agent implementations. Authentication and core backend services have been moved to dedicated services (`auth-service` and `core-api`).
 
 ## Features
 
+- **Pure AI Agent Focus**: Dedicated to AI agent implementations only
 - **Stock Analysis Agent**: Comprehensive portfolio analysis with real-time charts and insights
-- **TheGreatBonnie Pattern**: Reference implementation following exact patterns from the community
-- **Real-time Streaming**: Event-driven communication with the frontend
-- **Modular Architecture**: Clean separation of concerns with reusable components
-- **Error Handling**: Robust error handling and logging throughout
-- **Configuration Management**: Environment-based configuration system
+- **Ringi System Agent**: Collaborative decision-making workflows
+- **BPP Assistant Agent**: Business Process Platform automation
+- **Generic Agent**: Flexible agent with model selection capabilities
+- **Real-time Streaming**: Event-driven communication with frontends
+- **AG-UI Protocol Compliance**: Standardized agent discovery and metadata
+- **Modular Architecture**: Clean separation of agent logic
 
 ## Quick Start
 
