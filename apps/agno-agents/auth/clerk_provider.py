@@ -150,18 +150,30 @@ class ClerkProvider(IDPProvider):
             if not name and (first_name or last_name):
                 name = f"{first_name} {last_name}".strip()
             
-            # If still no email/name, fallback to API fetch (for backward compatibility)
+            # Skip API fetch if we have basic info from JWT template
+            # This avoids 403 errors and uses JWT template data
             if not email or not name:
-                user_details = self._fetch_user_details(user_id)
-                if user_details:
-                    email = email or user_details.get("email_addresses", [{}])[0].get("email_address", "")
-                    name = name or user_details.get("first_name", "") + " " + user_details.get("last_name", "")
-                    name = name.strip()
+                logger.warning(f"Missing email/name in JWT template for user {user_id}")
+                # Set fallback values instead of API call
+                email = email or f"user-{user_id}@example.com"
+                name = name or "User"
             
             # Extract organization information from Clerk metadata
             org_id = payload.get("org_id")
             org_name = payload.get("org_name")
             org_role = payload.get("org_role")
+            
+            # If no organization info in token, try to fetch from Clerk API
+            if not org_id and user_id:
+                try:
+                    org_info = self._fetch_organization_info(user_id)
+                    if org_info:
+                        org_id = org_info.get('id')
+                        org_name = org_info.get('name')
+                        org_role = org_info.get('role')
+                        logger.info(f"Fetched organization info from API: {org_id}")
+                except Exception as e:
+                    logger.warning(f"Could not fetch organization info: {e}")
             
             return UserInfo(
                 user_id=user_id,
@@ -263,12 +275,84 @@ class ClerkProvider(IDPProvider):
             logger.error(f"Error fetching user details: {e}")
             return None
     
+    def _fetch_organization_info(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch organization information for a user from Clerk API"""
+        try:
+            import urllib.request
+            import urllib.error
+            import ssl
+            import json
+            
+            # Create SSL context for development
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            # Build API URL to get user's organization memberships
+            api_url = f"{self.base_url}/users/{user_id}/organization_memberships"
+            
+            # Create request
+            request = urllib.request.Request(api_url)
+            request.add_header("Authorization", f"Bearer {self.api_key}")
+            request.add_header("Content-Type", "application/json")
+            
+            # Make request
+            with urllib.request.urlopen(request, context=ssl_context) as response:
+                if response.status == 200:
+                    memberships_data = json.loads(response.read().decode('utf-8'))
+                    
+                    # Get the first active organization membership
+                    for membership in memberships_data.get('data', []):
+                        if membership.get('role') and membership.get('organization'):
+                            org_data = membership.get('organization', {})
+                            logger.info(f"Found organization membership for {user_id}: {org_data.get('name')}")
+                            return {
+                                'id': org_data.get('id'),
+                                'name': org_data.get('name'),
+                                'role': membership.get('role')
+                            }
+                    
+                    logger.info(f"No active organization found for user {user_id}")
+                    return None
+                else:
+                    logger.warning(f"Failed to fetch organization info: HTTP {response.status}")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Error fetching organization info: {e}")
+            return None
+    
     def _get_permissions_from_role(self, role: str) -> List[str]:
         """Get permissions based on Clerk role"""
         role_permissions = {
-            "admin": ["read", "write", "admin", "manage_users", "manage_org"],
-            "manager": ["read", "write", "manage_users"],
-            "user": ["read", "write"],
-            "viewer": ["read"]
+            # B2B Company Roles
+            "admin": [
+                "read", "write", "admin", 
+                "manage_users", "manage_org", "manage_company",
+                "create_workspaces", "delete_workspaces",
+                "manage_billing", "export_data"
+            ],
+            "org:admin": [
+                "read", "write", "admin", 
+                "manage_users", "manage_org", "manage_company",
+                "create_workspaces", "delete_workspaces",
+                "manage_billing", "export_data"
+            ],
+            "manager": [
+                "read", "write", "manage_team", 
+                "invite_users", "manage_projects",
+                "view_analytics", "manage_integrations"
+            ],
+            "org:manager": [
+                "read", "write", "manage_team", 
+                "invite_users", "manage_projects",
+                "view_analytics", "manage_integrations"
+            ],
+            "user": ["read", "write", "use_ai_agents", "create_content"],
+            "member": ["read", "write", "use_ai_agents", "create_content"],
+            "org:member": ["read", "write", "use_ai_agents", "create_content"],
+            "basic_member": ["read", "use_ai_agents"],
+            "viewer": ["read"],
+            "guest_member": ["read"]
         }
         return role_permissions.get(role, ["read"])

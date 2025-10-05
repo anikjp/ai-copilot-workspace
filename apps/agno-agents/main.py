@@ -23,6 +23,9 @@ from shared.agent_base import agent_registry, AgentConfig, AgentType, get_agent_
 from shared.rate_limiter import rate_limiter, RateLimitConfig, RateLimitType
 # OAuth functionality removed - using Clerk authentication only
 
+# Import organization management
+from auth.organization_manager import organization_router
+
 # Import agent workflows
 from agents.stock_agent.agent import stock_analysis_workflow
 from agents.ringi_agent import ringi_workflow
@@ -80,6 +83,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Include organization management router
+app.include_router(organization_router)
 
 
 # ============================================================================
